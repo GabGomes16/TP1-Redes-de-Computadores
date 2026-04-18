@@ -1,0 +1,14 @@
+./server v4 51511 12345
+./client 127.0.0.1 51511
+
+./server v6 51511 12345
+./client ::1 51511
+
+testa server separado:
+nc 127.0.0.1 51511
+
+matar execução da porta:
+fuser -k 51511/tcp
+
+conferir porta:
+lsof -i :51511

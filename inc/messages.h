@@ -2,7 +2,7 @@
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string>
+#include <string.h>
 
 #define MSG_SIZE 128
 
