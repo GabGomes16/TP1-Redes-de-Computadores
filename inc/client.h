@@ -32,6 +32,6 @@
 
 int ip_validation (const char *endereco);
 
-void server_especifications (struct sockaddr_storage *server_address, int dominio, int porta);
+void server_especifications (struct sockaddr_storage *server_address, int dominio, int porta, char *endereco);
 
 void guesses (int socket, int *tentativas, HackerMessage *server_msg, HackerMessage *client_msg);

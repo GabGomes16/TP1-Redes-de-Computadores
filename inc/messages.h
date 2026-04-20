@@ -24,3 +24,6 @@ typedef struct {
     char message[MSG_SIZE]; // Mensagem de texto para logs do terminal
 } HackerMessage;
 
+int send_all(int socket, void *buffer, int length);
+
+int recv_all(int socket, void *buffer, int length);

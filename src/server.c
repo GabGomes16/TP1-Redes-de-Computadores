@@ -1,5 +1,39 @@
 #include "../inc/server.h"
 
+int send_all(int socket, void *buffer, int length){
+    int total = 0;
+    int bytes;
+
+    while (total < length) {
+        bytes = send(socket, (char*)buffer + total, length - total, 0);
+
+        if (bytes <= 0) {
+            return -1; // erro
+        }
+
+        total += bytes;
+    }
+
+    return total;
+}
+
+int recv_all(int socket, void *buffer, int length){
+    int total = 0;
+    int bytes;
+
+    while (total < length) {
+        bytes = recv(socket, (char*)buffer + total, length - total, 0);
+
+        if (bytes <= 0) {
+            return -1; // erro
+        }
+
+        total += bytes;
+    }
+
+    return total;
+}
+
 void server_especifications (struct sockaddr_storage *server_address, int dominio, int porta){
     memset(server_address, 0, sizeof(struct sockaddr_storage));
 
@@ -31,27 +65,36 @@ void game (int socket, int senha[5], int frequencia[10], HackerMessage *server_m
     memset(client_msg, 0, sizeof(*client_msg));
 
     server_msg->type = MSG_START;
-    const char msg_start[MSG_SIZE] = "Insira seu palpite:\n";
+    const char msg_start[MSG_SIZE] = "Insira seu palpite:\n> ";
     strcpy(server_msg->message, msg_start);
 
-    send(socket, server_msg, sizeof(*server_msg), 0);
-    recv(socket, client_msg, sizeof(*client_msg), 0);
+    send_all(socket, server_msg, sizeof(*server_msg));
+    recv_all(socket, client_msg, sizeof(*client_msg));
 
     int freq_local[10];
     for (int i = 0; i < 10; i++) {
         freq_local[i] = frequencia[i];
     }
 
-    char feedback_msg[MSG_SIZE] = ""; 
+    char feedback_msg[MSG_SIZE]; 
+    for (int i = 0; i < 5; i++) {
+        feedback_msg[i] = '?';
+    }
+
     for (int i = 0; i < 5; i++){
         if (client_msg->guess[i] == senha[i]){
             feedback_msg[i] = senha[i] + '0';
             freq_local[client_msg->guess[i]]--;
-        } else if (freq_local[client_msg->guess[i]] > 0){
-            feedback_msg[i] = '*';
-            freq_local[client_msg->guess[i]]--;
-        } else {
-            feedback_msg[i] = '_';
+        }
+    }
+    for (int i = 0; i < 5; i++){
+        if (feedback_msg[i] == '?'){
+            if (freq_local[client_msg->guess[i]] > 0){
+                feedback_msg[i] = '*';
+                freq_local[client_msg->guess[i]]--;
+            }else {
+                feedback_msg[i] = '_';
+            }
         }
     }
     feedback_msg[5] = '\0';
@@ -64,7 +107,7 @@ void game (int socket, int senha[5], int frequencia[10], HackerMessage *server_m
         }
     }
     strcpy(server_msg->message, feedback_msg);
-    send(socket, server_msg, sizeof(*server_msg), 0);
+    send_all(socket, server_msg, sizeof(*server_msg));
 }
 
 int main(int argc, char *argv[]){
@@ -137,7 +180,11 @@ int main(int argc, char *argv[]){
     //endpoint do cliente, sem especificação de endereço nem tamanho de endereço
     // printf("Antes do accept.\n");
     int socket_client = accept(socket_server, NULL, NULL);
-    printf("Cliente Conectado\n");
+    if (socket_client < 0) {
+        perror("Erro no accept");
+        exit(1);
+    }
+    printf("Cliente conectado\n");
 
     HackerMessage server_menssage;
     HackerMessage client_menssage;
@@ -148,12 +195,15 @@ int main(int argc, char *argv[]){
         frequencia[numero]++;
     }
 
+    memset(&server_menssage, 0, sizeof(server_menssage));
+    server_menssage.win_status = 0;
     while (server_menssage.win_status != 1){
-        game(socket_server, senha_numerica, frequencia, &server_menssage, &client_menssage);
+        game(socket_client, senha_numerica, frequencia, &server_menssage, &client_menssage);
     }
 
-    printf("Cliente Desconectado\n");
+    printf("Cliente desconectado\n");
     close(socket_server);
+    close(socket_client);
 
     return 0;
 }

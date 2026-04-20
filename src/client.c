@@ -1,5 +1,39 @@
 #include "../inc/client.h"
 
+int send_all(int socket, void *buffer, int length){
+    int total = 0;
+    int bytes;
+
+    while (total < length) {
+        bytes = send(socket, (char*)buffer + total, length - total, 0);
+
+        if (bytes <= 0) {
+            return -1; // erro
+        }
+
+        total += bytes;
+    }
+
+    return total;
+}
+
+int recv_all(int socket, void *buffer, int length){
+    int total = 0;
+    int bytes;
+
+    while (total < length) {
+        bytes = recv(socket, (char*)buffer + total, length - total, 0);
+
+        if (bytes <= 0) {
+            return -1; // erro
+        }
+
+        total += bytes;
+    }
+
+    return total;
+}
+
 int ip_validation (const char *endereco){
     struct sockaddr_in v4;
     struct sockaddr_in6 v6;
@@ -16,7 +50,7 @@ int ip_validation (const char *endereco){
     return 0;
 }
 
-void server_especifications (struct sockaddr_storage *server_address, int dominio, int porta){
+void server_especifications (struct sockaddr_storage *server_address, int dominio, int porta, char *endereco){
     memset(server_address, 0, sizeof(struct sockaddr_storage));
 
     if (dominio == AF_INET){
@@ -24,14 +58,14 @@ void server_especifications (struct sockaddr_storage *server_address, int domini
 
         v4->sin_family = dominio;
         v4->sin_port = htons(porta);
-        v4->sin_addr.s_addr = INADDR_ANY;
+        inet_pton(AF_INET, endereco, &v4->sin_addr);
     }
     if (dominio == AF_INET6){
         struct sockaddr_in6 *v6 = (struct sockaddr_in6*) server_address;
 
         v6->sin6_family = dominio;
         v6->sin6_port = htons(porta);
-        v6->sin6_addr = in6addr_any;
+        inet_pton(AF_INET6, endereco, &v6->sin6_addr);
     }
 }
 
@@ -39,7 +73,7 @@ void guesses (int socket, int *tentativas, HackerMessage *server_msg, HackerMess
     memset(server_msg, 0, sizeof(*server_msg));
     memset(client_msg, 0, sizeof(*client_msg));
 
-    recv(socket, server_msg, sizeof(*server_msg), 0);
+    recv_all(socket, server_msg, sizeof(*server_msg));
 
     int valido = 0;
     while(!valido){
@@ -63,11 +97,13 @@ void guesses (int socket, int *tentativas, HackerMessage *server_msg, HackerMess
         }
     }
     client_msg->type = MSG_GUESS;
-    send(socket, client_msg, sizeof(*client_msg), 0);
-    recv(socket, server_msg, sizeof(*server_msg), 0);
-    printf("%s", server_msg->message); // feedback
-    (*tentativas)++;
-    printf("Tentativas realizadas: %d\n", *tentativas);
+    send_all(socket, client_msg, sizeof(*client_msg));
+    recv_all(socket, server_msg, sizeof(*server_msg));
+    if (server_msg->win_status != 1){
+        printf("Dica: %s\n", server_msg->message); // feedback
+        (*tentativas)++;
+        printf("Tentativas realizadas: %d\n", *tentativas);
+    }
 }
 
 int main(int argc, char *argv[]){
@@ -95,9 +131,9 @@ int main(int argc, char *argv[]){
     int socket_client = socket(dominio, SOCK_STREAM, 0);
 
     struct sockaddr_storage server_address;
-    server_especifications(&server_address, dominio, porta);
+    server_especifications(&server_address, dominio, porta, endereco);
 
-    if (connect(socket_client, (struct sockaddr*)&server_address, tamanho_endereco)){
+    if (connect(socket_client, (struct sockaddr*)&server_address, tamanho_endereco) < 0){
         perror("Erro no connect");
         exit(1);
     }
@@ -110,6 +146,8 @@ int main(int argc, char *argv[]){
     client_message.type = MSG_GUESS;
     
     int tentativas = 0;
+    memset(&server_menssage, 0, sizeof(server_menssage));
+    server_menssage.win_status = 0;
     while (server_menssage.win_status != 1) {
         guesses(socket_client, &tentativas, &server_menssage, &client_message);
     }
