@@ -35,6 +35,41 @@ void server_especifications (struct sockaddr_storage *server_address, int domini
     }
 }
 
+void guesses (int socket, int *tentativas, HackerMessage *server_msg, HackerMessage *client_msg){
+    memset(server_msg, 0, sizeof(*server_msg));
+    memset(client_msg, 0, sizeof(*client_msg));
+
+    recv(socket, server_msg, sizeof(*server_msg), 0);
+
+    int valido = 0;
+    while(!valido){
+        printf("%s", server_msg->message);
+        char guess[7];
+        scanf("%6s", guess);
+        if(strlen(guess) == 5){
+            for (int i = 0; i < 5; i++){
+                if (isdigit(guess[i])){
+                    client_msg->guess[i] = guess[i] - '0';
+                } else {
+                    printf("Insira uma sequência válida!\n");
+                    break;
+                }
+                if (i == 4){
+                    valido = 1;
+                }
+            }
+        } else {
+            printf("Insira uma sequência válida!\n");
+        }
+    }
+    client_msg->type = MSG_GUESS;
+    send(socket, client_msg, sizeof(*client_msg), 0);
+    recv(socket, server_msg, sizeof(*server_msg), 0);
+    printf("%s", server_msg->message); // feedback
+    (*tentativas)++;
+    printf("Tentativas realizadas: %d\n", *tentativas);
+}
+
 int main(int argc, char *argv[]){
     char *endereco = argv[1];
     int porta = atoi(argv[2]);
@@ -67,8 +102,18 @@ int main(int argc, char *argv[]){
         exit(1);
     }
     
-    char client_message[256] = "OiÊ!";
-    send(socket_client, client_message, sizeof(client_message), 0);
+    // char client_message[256] = "OiÊ!";
+    // send(socket_client, client_message, sizeof(client_message), 0);
+
+    HackerMessage server_menssage;
+    HackerMessage client_message;
+    client_message.type = MSG_GUESS;
+    
+    int tentativas = 0;
+    while (server_menssage.win_status != 1) {
+        guesses(socket_client, &tentativas, &server_menssage, &client_message);
+    }
+    printf("Acesso concedido! Thaísa recuperou o sistema!\n");
 
     close(socket_client);
 }

@@ -26,6 +26,47 @@ void server_especifications (struct sockaddr_storage *server_address, int domini
     }
 }
 
+void game (int socket, int senha[5], int frequencia[10], HackerMessage *server_msg, HackerMessage *client_msg){
+    memset(server_msg, 0, sizeof(*server_msg));
+    memset(client_msg, 0, sizeof(*client_msg));
+
+    server_msg->type = MSG_START;
+    const char msg_start[MSG_SIZE] = "Insira seu palpite:\n";
+    strcpy(server_msg->message, msg_start);
+
+    send(socket, server_msg, sizeof(*server_msg), 0);
+    recv(socket, client_msg, sizeof(*client_msg), 0);
+
+    int freq_local[10];
+    for (int i = 0; i < 10; i++) {
+        freq_local[i] = frequencia[i];
+    }
+
+    char feedback_msg[MSG_SIZE] = ""; 
+    for (int i = 0; i < 5; i++){
+        if (client_msg->guess[i] == senha[i]){
+            feedback_msg[i] = senha[i] + '0';
+            freq_local[client_msg->guess[i]]--;
+        } else if (freq_local[client_msg->guess[i]] > 0){
+            feedback_msg[i] = '*';
+            freq_local[client_msg->guess[i]]--;
+        } else {
+            feedback_msg[i] = '_';
+        }
+    }
+    feedback_msg[5] = '\0';
+
+    server_msg->win_status = 1;
+    for (int i = 0; i < 5; i++){
+        if (client_msg->guess[i] != senha[i]) {
+            server_msg->win_status = 0;
+            break;
+        }
+    }
+    strcpy(server_msg->message, feedback_msg);
+    send(socket, server_msg, sizeof(*server_msg), 0);
+}
+
 int main(int argc, char *argv[]){
     char *protocolo = argv[1];
     int porta = atoi(argv[2]);
@@ -44,6 +85,22 @@ int main(int argc, char *argv[]){
         printf("Servidor iniciado em modo IPv6 na porta %d\n", porta);
     } else {
         fprintf(stderr, "Erro: protocolo inválido\n");
+        return 1;
+    }
+
+    // conferir se a senha é válida (toda numérica e com 5 dígitos)
+    int senha_numerica[5];
+    if(strlen(senha) == 5){
+        for (int i = 0; i < 5; i++){
+            if (isdigit(senha[i])){
+                senha_numerica[i] = senha[i] - '0';
+            } else {
+                printf("Senha inválida! Use apenas dígitos.\n");
+                return 1;
+            }
+        }
+    } else {
+        printf("Senha inválida! Use exatamente 5 dígitos.\n");
         return 1;
     }
 
@@ -78,13 +135,22 @@ int main(int argc, char *argv[]){
     }
 
     //endpoint do cliente, sem especificação de endereço nem tamanho de endereço
-    printf("Antes do accept.\n");
+    // printf("Antes do accept.\n");
     int socket_client = accept(socket_server, NULL, NULL);
     printf("Cliente Conectado\n");
 
-    char client_message[256];
-    recv(socket_client, client_message, sizeof(client_message), 0);
-    printf("%s\n", client_message);
+    HackerMessage server_menssage;
+    HackerMessage client_menssage;
+
+    int frequencia[10] = {0};
+    for (int i = 0; i < 5; i++){
+        int numero = senha_numerica[i];
+        frequencia[numero]++;
+    }
+
+    while (server_menssage.win_status != 1){
+        game(socket_server, senha_numerica, frequencia, &server_menssage, &client_menssage);
+    }
 
     printf("Cliente Desconectado\n");
     close(socket_server);
