@@ -1,52 +1,15 @@
 #include "../inc/client.h"
 
-int send_all(int socket, void *buffer, int length){
-    int total = 0;
-    int bytes;
-
-    while (total < length) {
-        bytes = send(socket, (char*)buffer + total, length - total, 0);
-
-        if (bytes <= 0) {
-            return -1; // erro
-        }
-
-        total += bytes;
-    }
-
-    return total;
-}
-
-int recv_all(int socket, void *buffer, int length){
-    int total = 0;
-    int bytes;
-
-    while (total < length) {
-        bytes = recv(socket, (char*)buffer + total, length - total, 0);
-
-        if (bytes <= 0) {
-            return -1; // erro
-        }
-
-        total += bytes;
-    }
-
-    return total;
-}
-
 int ip_validation (const char *endereco){
     struct sockaddr_in v4;
     struct sockaddr_in6 v6;
 
-    //testa se é IPv4
     if(inet_pton(AF_INET, endereco, &(v4.sin_addr)) == 1){
         return 4;
     }
-    //testa se é IPv6
     if(inet_pton(AF_INET6, endereco, &(v6.sin6_addr)) == 1){
         return 6;
     }
-    //caso seja inválido
     return 0;
 }
 
@@ -73,8 +36,9 @@ void guesses (int socket, int *tentativas, HackerMessage *server_msg, HackerMess
     memset(server_msg, 0, sizeof(*server_msg));
     memset(client_msg, 0, sizeof(*client_msg));
 
-    recv_all(socket, server_msg, sizeof(*server_msg));
+    recv(socket, server_msg, sizeof(*server_msg), 0);
 
+    //só deixa o programa seguir se houver uma entrada válida
     int valido = 0;
     while(!valido){
         printf("%s", server_msg->message);
@@ -97,10 +61,10 @@ void guesses (int socket, int *tentativas, HackerMessage *server_msg, HackerMess
         }
     }
     client_msg->type = MSG_GUESS;
-    send_all(socket, client_msg, sizeof(*client_msg));
-    recv_all(socket, server_msg, sizeof(*server_msg));
+    send(socket, client_msg, sizeof(*client_msg), 0);
+    recv(socket, server_msg, sizeof(*server_msg), 0);
     if (server_msg->win_status != 1){
-        printf("Dica: %s\n", server_msg->message); // feedback
+        printf("Dica: %s\n", server_msg->message);
         (*tentativas)++;
         printf("Tentativas realizadas: %d\n", *tentativas);
     }
@@ -124,10 +88,6 @@ int main(int argc, char *argv[]){
         tamanho_endereco = sizeof(struct sockaddr_in6);
     }
 
-    //cria um socket:
-    // -com dominio escolhido pelo usuário (v4 ou v6);
-    // -com o tipo STREAM que é orientado a conexão ;
-    // -e protocolo TCP/IP como padrão: 0.
     int socket_client = socket(dominio, SOCK_STREAM, 0);
 
     struct sockaddr_storage server_address;
@@ -137,14 +97,12 @@ int main(int argc, char *argv[]){
         perror("Erro no connect");
         exit(1);
     }
-    
-    // char client_message[256] = "OiÊ!";
-    // send(socket_client, client_message, sizeof(client_message), 0);
 
     HackerMessage server_menssage;
     HackerMessage client_message;
     client_message.type = MSG_GUESS;
     
+    //loop que roda a função e encerra apenas quando a senha enviada estiver correta
     int tentativas = 0;
     memset(&server_menssage, 0, sizeof(server_menssage));
     server_menssage.win_status = 0;
@@ -154,4 +112,6 @@ int main(int argc, char *argv[]){
     printf("Acesso concedido! Thaísa recuperou o sistema!\n");
 
     close(socket_client);
+    
+    return 0;
 }

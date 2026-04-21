@@ -1,9 +1,3 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-
 #define MSG_SIZE 128
 
 typedef enum {
@@ -23,7 +17,3 @@ typedef struct {
     int win_status; // 1 para vitoria, 0 para em jogo, −1 para erro
     char message[MSG_SIZE]; // Mensagem de texto para logs do terminal
 } HackerMessage;
-
-int send_all(int socket, void *buffer, int length);
-
-int recv_all(int socket, void *buffer, int length);

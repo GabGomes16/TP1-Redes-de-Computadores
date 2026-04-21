@@ -1,0 +1,121 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{tikz-cd}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{wasysym}
+\usepackage[brazilian]{babel}
+\usepackage{hyperref}
+\usepackage{eso-pic,graphicx}
+\usepackage{float}
+\usepackage{pgfplots}
+\usepackage{caption}
+\captionsetup{font=footnotesize}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{bold-extra}
+\usepackage[margin=2cm]{geometry}
+\usepackage{titlesec}
+\usepackage{adjustbox} % Para redimensionar a tabela
+
+% Define a formatação das seções
+\titleformat{\section}
+  {\normalfont\large\bfseries} % Formato do título
+  {\thesection} % Número da seção
+  {1em} % Espaçamento entre número e título
+  {} % Texto antes do título
+
+\titleformat{\subsection}
+  {\normalfont\small\bfseries} % Formato do título
+  {\thesubsection} % Número da subseção
+  {1em} % Espaçamento entre número e título
+  {} % Texto antes do título
+
+\titleformat{\subsubsection}
+  {\normalfont\small\bfseries} % Formato do título
+  {\thesubsubsection} % Número da subsubseção
+  {1em} % Espaçamento entre número e título
+  {} % Texto antes do título
+
+\definecolor{minhacor}{RGB}{0, 128, 255} % Azul
+
+%========================================================================================================================================
+
+\begin{document}
+
+	\begin{center}
+		{\Large {Trabalho Prático I - Redes de Computadores}}
+		
+		\vspace{.2cm}
+		
+		{Gabriel de Araújo Costa Gomes}
+
+        {2022102872}
+		
+		\vspace{.2cm}
+		
+		Departamento de Ciência da Computação; Universidade Federal de Minas Gerais
+		
+		Belo Horizonte, Minas Gerais, Brasil; {\today}
+
+        \texttt{gacg2004@ufmg.br}
+		
+	\end{center}
+
+    \section{Introdução}
+
+        \hspace{0.5cm}Esse relátório tem o objetivo de descrever os problemas, imprevistos, desafios e a lógica por trás das soluções do primeiro trabalho prático
+        da matéria de Redes de Computadores no semestre 2026/1. O objetivo do trabalho foi desenvolver um sistema de quebra senhas
+        baseado na mecânica de tentativa e erro com \textit{feedback} posicional, seguindo um modelo cliente-servidor.
+
+    \section{Desafios, Imprevistos, Dificuldades e Soluções}
+        \subsection{Desafios}
+        A partir da leitura do enunciado do trabalho já foram detectados os seguintes desafios:
+
+        \begin{enumerate}
+            \item Estabelecimento correto das conexões;
+            \item Flexibilidade no uso dos domínios IPv4 ou IPv6;
+            \item Tratamento e verificação de todas as entradas feitas ao sistema para ter o funcionamento desejado sempre;
+            \item Tratamento das mensagens trocadas entre o cliente e o servidor; e por fim
+            \item Tratamento das mensagens de feedback do server.
+        \end{enumerate}
+
+        \subsection{Fluxo de desenvolvimento}
+        
+        \hspace{0.5cm}Primeiro foi estudado o funcionamento das conexões de socket e como elas trocam mensagens
+        entre si, em seguida foi feito o desenvolvimento das partes funcionais: a inicialização do server e do client. Depois de garantir que estava tudo funcional
+        na conexão, foi detectado os lugares onde poderiam ser usadas funções para substituir, como por exemplo a função  \textit{ip\_validation} e \textit{server\_especifications}
+        (esta que existe tanto no client quanto no server). Essa etapa foi puramente gosto pessoal, com o intuito de deixar mais legível o código e tornar mais simples de debbugar.
+        
+        
+        Para a parte da comunicação, tudo iniciou com pequenos testes com o envio de mensagens simples, seguido do desenvolvimento das funções que fazem o comportamento de comunicação solicitado 
+        pelo enunciado, sendo estas as funções \textit{guesses} no client e \textit{game} no server. 
+
+        \subsection{Imprevistos, Dificuldades e soluções}
+
+        \hspace{0.5cm}Durante o desenvolvimento que foi descrito, houveram alguns problemas na parte da comunicação. Um deles foi a validação de entrada de senha feita pelo cliente na função \textit{guesses},
+        que necessitou de conversão de \textit{char} para \textit{int}. Como a função \textit{atoi} não iria me ajudar muito bem nesse caso, pois tiraria a separação dos números, foi utilizado a operação x - '0',
+        onde x é um \textit{char} de um número qualquer. O restante da função foi bem tranquila.
+
+        Já função de comunicação \textit{game} no server foi mais trabalhosa. A dificuldade foi achar uma forma de comparar dois vetores da forma necessária e formatar a saída de acordo. Para resolver isso, foi utilizado
+        um vetor que mapeia a quantidade de dígitos de 0 a 9 existem na senha, o que facilitou bastante, mas pra que o feedback ficasse da forma correta foi muita tentativa e erro. O tratamento do feedback acabou tendo que 
+        ser feito por etapas, pra evitar erros e melhorar legibilidade.
+
+        No momento de utilizar essas funções aconteceram muitos problemas: mensagens que não chegavam, caracteres fantasmas, fechamento abrubto do server. Como não eram erros de conexão, pois isso já estava correto, tomei medidas
+        para resolver esses caracteres estranhos com um \textit{memset} pra cada \textit{struct HackerMessage} em ambas as funções. Isso não resolveu o problema, então pensei que o problema pudesse ser a mensagem de feedback, então
+        foi feito \textit{$feedback\_msg[5] = '\backslash 0'$}, também sem sucesso. Além disso, foi debbugado as funções de \textit{bind}, \textit{listen} e \textit{accept}, mas não houve erro algum nelas. No final de tudo, descobriu-se que o problema era a forma com que foi inicializada a função criada: com o socket do servidor. Um erro inocente mas que acredito que 
+        foi muito importante para o aprendizado: os sockets do server não transferem dados, eles apenas criam a conexão e mantem a comunicação com o \textit{listen}. Depois de corrigir o socket, tudo funcionou normalmente, haviam uns erros
+        no feedback ainda, mas eles foram corrigidos em seguida.
+
+    \section{Conclusão}
+
+    \hspace{0.5cm}O trabalho se mostrou bem sucedido em ensinar o funcionamento de uma conexão TCP/IP simples, reforçando os conceitos básicos tanto do lado do servidor quanto do cliente. Além disso, a atividade proporcionou uma compreensão mais 
+    prática sobre a comunicação em rede, especialmente no envio e recebimento de dados, tratamento de erros e sincronização entre processos. 
+
+    A proposta foi, ao mesmo tempo, desafiadora e divertida, e permitiu uma experiência profundada por colocar em prática os conceitos estudados. Durante o desenvolvimento, também foi possível perceber a importância de detalhes de 
+    implementação, como o correto uso de estruturas, buffers e validação de dados, que impactam diretamente no funcionamento do sistema.
+
+\end{document}
